@@ -489,7 +489,7 @@ function Sidebar({ onReset }) {
       <nav className="nav-links">
         <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} end>
           <LayoutDashboard size={16} />
-          Dashboard Público
+          Público
         </NavLink>
 
         {isAdminArea ? (
