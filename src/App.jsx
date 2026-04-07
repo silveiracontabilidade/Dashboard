@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   ArrowLeft,
-  BarChart3,
+  Pencil,
   Clock3,
   Gauge,
   LayoutDashboard,
@@ -26,41 +26,46 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
+import logoImg from './assets/logo.png'
 
-const STORAGE_KEY = 'silveira_autodash_data_v1'
 const departments = ['TI', 'Financeiro', 'RH', 'Comercial', 'Fiscal', 'Contábil', 'Marketing', 'Pessoal', 'Empresarial', 'Processos', 'CSI']
 const types = ['IA', 'Automação', 'Power Automate']
 const statuses = ['Ativa', 'Em Desenvolvimento', 'Pausada']
-const chartColors = ['#2847F0', '#7C3AED', '#14B8A6']
+const chartColors = ['#1a1f3a', '#C3996B', '#2B9FAE']
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
-const seedData = [
-  { id: 1, name: 'Geração de Propostas Comerciais', department: 'Comercial', type: 'IA', time_before: 150, time_after: 20, implementation_date: '2026-03-25', responsible: 'Camila Rocha', description: 'Criação automática de proposta comercial com apoio de IA.', status: 'Ativa' },
-  { id: 2, name: 'Lançamento Fiscal Automatizado', department: 'Fiscal', type: 'Power Automate', time_before: 60, time_after: 5, implementation_date: '2026-03-10', responsible: 'Marcos Pereira', description: 'Automação para agilizar lançamentos e conferências fiscais.', status: 'Ativa' },
-  { id: 3, name: 'Envio de NFs para Clientes', department: 'Financeiro', type: 'Automação', time_before: 45, time_after: 5, implementation_date: '2026-02-28', responsible: 'Juliana Ferreira', description: 'Disparo automático de notas fiscais para clientes.', status: 'Ativa' },
-  { id: 4, name: 'Análise Contábil por IA', department: 'Contábil', type: 'IA', time_before: 480, time_after: 60, implementation_date: '2026-02-15', responsible: 'Roberto Alves', description: 'Análise inicial de dados contábeis com apoio de IA.', status: 'Ativa' },
-  { id: 5, name: 'Fluxo de Aprovação Interna', department: 'Processos', type: 'Power Automate', time_before: 90, time_after: 10, implementation_date: '2026-01-20', responsible: 'Fernanda Souza', description: 'Automação do fluxo de aprovação interna entre áreas.', status: 'Ativa' },
-  { id: 6, name: 'Atendimento ao Cliente com Chatbot', department: 'Comercial', type: 'IA', time_before: 300, time_after: 45, implementation_date: '2026-01-10', responsible: 'Lucas Oliveira', description: 'Atendimento inicial e triagem automatizada.', status: 'Ativa' },
-  { id: 7, name: 'Conciliação Bancária', department: 'Financeiro', type: 'Automação', time_before: 120, time_after: 10, implementation_date: '2025-12-01', responsible: 'Pedro Lima', description: 'Conciliação automatizada de lançamentos bancários.', status: 'Ativa' },
-  { id: 8, name: 'Onboarding de Colaboradores', department: 'RH', type: 'Automação', time_before: 240, time_after: 30, implementation_date: '2025-11-15', responsible: 'Ana Martins', description: 'Fluxo de onboarding com tarefas e lembretes automáticos.', status: 'Ativa' },
-  { id: 9, name: 'Classificação de E-mails', department: 'TI', type: 'IA', time_before: 60, time_after: 5, implementation_date: '2025-10-08', responsible: 'Diego Ramos', description: 'Classificação inteligente de mensagens por prioridade.', status: 'Ativa' },
-  { id: 10, name: 'Geração Automática de Relatórios', department: 'CSI', type: 'IA', time_before: 180, time_after: 15, implementation_date: '2025-09-12', responsible: 'Felipe Vidoi', description: 'Geração automatizada de relatórios gerenciais.', status: 'Ativa' },
-]
-
-function loadAutomations() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return seedData
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) && parsed.length ? parsed : seedData
-  } catch {
-    return seedData
-  }
+async function fetchAutomations() {
+  const response = await fetch(`${API_BASE_URL}/automations/`)
+  if (!response.ok) throw new Error('Falha ao carregar automações.')
+  return response.json()
 }
 
-function saveAutomations(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+async function createAutomation(payload) {
+  const response = await fetch(`${API_BASE_URL}/automations/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error('Falha ao criar automação.')
+  return response.json()
 }
+
+async function removeAutomation(id) {
+  const response = await fetch(`${API_BASE_URL}/automations/${id}/`, { method: 'DELETE' })
+  if (!response.ok) throw new Error('Falha ao excluir automação.')
+}
+
+async function updateAutomation(id, payload) {
+  const response = await fetch(`${API_BASE_URL}/automations/${id}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error('Falha ao atualizar automação.')
+  return response.json()
+}
+
 
 function formatMinutes(min) {
   const value = Number(min || 0)
@@ -161,7 +166,7 @@ function EvolutionChart({ automations }) {
             <XAxis dataKey="month" />
             <YAxis allowDecimals={false} />
             <Tooltip />
-            <Bar dataKey="total" radius={[8, 8, 0, 0]} fill="#2847F0" />
+            <Bar dataKey="total" radius={[8, 8, 0, 0]} fill={chartColors[0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -218,8 +223,8 @@ function TimeChart({ automations }) {
             <YAxis />
             <Tooltip />
             <Legend />
-            <Bar dataKey="antes" fill="#EF4444" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="depois" fill="#14B8A6" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="antes" fill="#1a1f3a" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="depois" fill="#C3996B" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -236,7 +241,7 @@ function TypeBadge({ type }) {
   return <Badge className={styles[type] || ''}>{type}</Badge>
 }
 
-function AutomationTable({ automations, isAdmin, onDelete }) {
+function AutomationTable({ automations, isAdmin, onDelete, onEdit }) {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
@@ -306,6 +311,9 @@ function AutomationTable({ automations, isAdmin, onDelete }) {
                   <td>{item.responsible}</td>
                   {isAdmin ? (
                     <td className="text-right">
+                      <button className="icon-button edit" onClick={() => onEdit(item)} title="Editar">
+                        <Pencil size={16} />
+                      </button>
                       <button className="icon-button" onClick={() => onDelete(item.id)} title="Excluir">
                         <Trash2 size={16} />
                       </button>
@@ -321,6 +329,21 @@ function AutomationTable({ automations, isAdmin, onDelete }) {
   )
 }
 
+function InfoCards() {
+  return (
+    <div className="two-columns">
+      <Card>
+        <h2 className="card-title">Como usar</h2>
+        <p className="muted">O dashboard público é só visualização. A área administrativa serve para cadastrar e manter as automações.</p>
+      </Card>
+      <Card>
+        <h2 className="card-title">Persistência</h2>
+        <p className="muted">Os dados ficam salvos no banco de dados.</p>
+      </Card>
+    </div>
+  )
+}
+
 function DashboardView({ automations }) {
   return (
     <div className="page-stack">
@@ -332,12 +355,15 @@ function DashboardView({ automations }) {
       </div>
       <TimeChart automations={automations} />
       <AutomationTable automations={automations} />
+      <InfoCards />
     </div>
   )
 }
 
 function AddAutomationForm({ onSave }) {
   const navigate = useNavigate()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [form, setForm] = useState({
     name: '',
     department: '',
@@ -355,15 +381,22 @@ function AddAutomationForm({ onSave }) {
   const saved = form.time_before && form.time_after ? Number(form.time_before) - Number(form.time_after) : null
   const gain = saved !== null && Number(form.time_before) > 0 ? ((saved / Number(form.time_before)) * 100).toFixed(1) : null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    onSave({
-      id: Date.now(),
-      ...form,
-      time_before: Number(form.time_before),
-      time_after: Number(form.time_after),
-    })
-    navigate('/admin')
+    setSaving(true)
+    setError('')
+    try {
+      await onSave({
+        ...form,
+        time_before: Number(form.time_before),
+        time_after: Number(form.time_after),
+      })
+      navigate('/admin')
+    } catch (err) {
+      setError(err?.message || 'Falha ao salvar.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -376,6 +409,7 @@ function AddAutomationForm({ onSave }) {
       <Card>
         <h2 className="card-title xl">Nova Automação</h2>
         <p className="muted">Preencha os dados da automação implementada.</p>
+        {error ? <p className="muted">{error}</p> : null}
 
         <form onSubmit={handleSubmit} className="form-grid">
           <div className="field full">
@@ -439,8 +473,12 @@ function AddAutomationForm({ onSave }) {
           </div>
 
           <div className="button-row full">
-            <button type="submit" className="primary-btn">Cadastrar Automação</button>
-            <button type="button" className="secondary-btn" onClick={() => navigate('/admin')}>Cancelar</button>
+            <button type="submit" className="primary-btn" disabled={saving}>
+              {saving ? 'Salvando...' : 'Cadastrar Automação'}
+            </button>
+            <button type="button" className="secondary-btn" onClick={() => navigate('/admin')} disabled={saving}>
+              Cancelar
+            </button>
           </div>
         </form>
       </Card>
@@ -448,7 +486,148 @@ function AddAutomationForm({ onSave }) {
   )
 }
 
-function AdminView({ automations, onDelete }) {
+function EditAutomationModal({ automation, onClose, onSave }) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [form, setForm] = useState({
+    name: '',
+    department: '',
+    type: '',
+    time_before: '',
+    time_after: '',
+    implementation_date: '',
+    responsible: '',
+    description: '',
+    status: 'Ativa',
+  })
+
+  useEffect(() => {
+    if (!automation) return
+    setForm({
+      name: automation.name || '',
+      department: automation.department || '',
+      type: automation.type || '',
+      time_before: automation.time_before ?? '',
+      time_after: automation.time_after ?? '',
+      implementation_date: automation.implementation_date || '',
+      responsible: automation.responsible || '',
+      description: automation.description || '',
+      status: automation.status || 'Ativa',
+    })
+  }, [automation])
+
+  const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }))
+
+  const saved = form.time_before !== '' && form.time_after !== '' ? Number(form.time_before) - Number(form.time_after) : null
+  const gain = saved !== null && Number(form.time_before) > 0 ? ((saved / Number(form.time_before)) * 100).toFixed(1) : null
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await onSave(automation.id, {
+        ...form,
+        time_before: Number(form.time_before),
+        time_after: Number(form.time_after),
+      })
+      onClose()
+    } catch (err) {
+      setError(err?.message || 'Falha ao atualizar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!automation) return null
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal">
+        <div className="modal-header">
+          <div>
+            <h3>Editar Automação</h3>
+            <p className="muted">Atualize os dados da automação selecionada.</p>
+          </div>
+          <button className="icon-button close" onClick={onClose} title="Fechar">×</button>
+        </div>
+        {error ? <p className="muted">{error}</p> : null}
+        <form onSubmit={handleSubmit} className="form-grid">
+          <div className="field full">
+            <label>Nome da Automação *</label>
+            <input value={form.name} onChange={(e) => update('name', e.target.value)} required />
+          </div>
+
+          <div className="field">
+            <label>Área / Departamento *</label>
+            <select value={form.department} onChange={(e) => update('department', e.target.value)} required>
+              <option value="">Selecione</option>
+              {departments.map((dep) => <option key={dep} value={dep}>{dep}</option>)}
+            </select>
+          </div>
+
+          <div className="field">
+            <label>Tipo de Automação *</label>
+            <select value={form.type} onChange={(e) => update('type', e.target.value)} required>
+              <option value="">Selecione</option>
+              {types.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </div>
+
+          <div className="field">
+            <label>Tempo Antes (minutos) *</label>
+            <input type="number" min="0" value={form.time_before} onChange={(e) => update('time_before', e.target.value)} required />
+          </div>
+
+          <div className="field">
+            <label>Tempo Depois (minutos) *</label>
+            <input type="number" min="0" value={form.time_after} onChange={(e) => update('time_after', e.target.value)} required />
+          </div>
+
+          {saved !== null ? (
+            <div className="highlight-box full">
+              <div className="muted">Tempo economizado</div>
+              <div className="highlight-value">{formatMinutes(saved)}{gain ? ` (${gain}% de ganho)` : ''}</div>
+            </div>
+          ) : null}
+
+          <div className="field">
+            <label>Data de Implementação *</label>
+            <input type="date" value={form.implementation_date} onChange={(e) => update('implementation_date', e.target.value)} required />
+          </div>
+
+          <div className="field">
+            <label>Responsável *</label>
+            <input value={form.responsible} onChange={(e) => update('responsible', e.target.value)} required />
+          </div>
+
+          <div className="field">
+            <label>Status</label>
+            <select value={form.status} onChange={(e) => update('status', e.target.value)}>
+              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </div>
+
+          <div className="field">
+            <label>Descrição</label>
+            <textarea value={form.description} onChange={(e) => update('description', e.target.value)} rows={4} />
+          </div>
+
+          <div className="button-row full">
+            <button type="submit" className="primary-btn" disabled={saving}>
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+            <button type="button" className="secondary-btn" onClick={onClose} disabled={saving}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function AdminView({ automations, onDelete, onEdit }) {
   return (
     <div className="page-stack">
       <PanelHeader
@@ -467,101 +646,106 @@ function AdminView({ automations, onDelete }) {
         <TypeChart automations={automations} />
       </div>
       <TimeChart automations={automations} />
-      <AutomationTable automations={automations} isAdmin onDelete={onDelete} />
+      <AutomationTable automations={automations} isAdmin onDelete={onDelete} onEdit={onEdit} />
+      <InfoCards />
     </div>
   )
 }
 
-function Sidebar({ onReset }) {
-  const location = useLocation()
-  const isAdminArea = location.pathname.startsWith('/admin')
-
+function Header() {
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <div className="brand-mark">S</div>
-        <div>
-          <div className="brand-title">SILVEIRA</div>
-          <div className="brand-subtitle">CONTABILIDADE</div>
+    <header className="header">
+      <div className="header__inner">
+        <div className="header__branding">
+          <img src={logoImg} alt="Silveira Contabilidade" className="branding__logo" />
+          <div className="branding__text">
+            <span className="branding__main">SILVEIRA</span>
+            <span className="branding__sub">CONTABILIDADE</span>
+          </div>
         </div>
-      </div>
 
-      <nav className="nav-links">
-        <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} end>
-          <LayoutDashboard size={16} />
-          Público
-        </NavLink>
-
-        {isAdminArea ? (
-          <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        <nav className="header__nav">
+          <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
+            <LayoutDashboard size={16} />
+            Público
+          </NavLink>
+          <NavLink to="/admin" className={({ isActive }) => (isActive ? 'active' : '')}>
             <Settings size={16} />
             Área Administrativa
           </NavLink>
-        ) : null}
-      </nav>
+        </nav>
 
-      <div className="sidebar-info">
-        <div className="info-box">
-          <div className="info-title">Como usar</div>
-          <p>O dashboard público é só visualização. A área administrativa serve para cadastrar e manter as automações.</p>
-        </div>
-        <div className="info-box">
-          <div className="info-title">Persistência</div>
-          <p>Os dados ficam salvos no navegador usando localStorage. Se quiser voltar ao exemplo, use o reset.</p>
+        <div className="header__actions">
+          <div className="header__spacer" />
         </div>
       </div>
-
-      <div className="sidebar-footer">
-        {isAdminArea ? (
-          <button className="secondary-btn full-btn" onClick={onReset}>
-            <BarChart3 size={16} />
-            Resetar Exemplo
-          </button>
-        ) : null}
-        <div className="footer-note">Projeto React local · sem Base44</div>
-      </div>
-    </aside>
+    </header>
   )
 }
 
 export default function App() {
   const [automations, setAutomations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [editing, setEditing] = useState(null)
 
   useEffect(() => {
-    setAutomations(loadAutomations())
+    let active = true
+    fetchAutomations()
+      .then((data) => {
+        if (active) setAutomations(data)
+      })
+      .catch((err) => {
+        if (active) setError(err?.message || 'Falha ao carregar dados.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
-  useEffect(() => {
-    if (automations.length) saveAutomations(automations)
-  }, [automations])
-
-  const addAutomation = (item) => {
-    const updated = [item, ...automations]
-    setAutomations(updated)
-    saveAutomations(updated)
+  const refreshAutomations = async () => {
+    const data = await fetchAutomations()
+    setAutomations(data)
   }
 
-  const deleteAutomation = (id) => {
-    const updated = automations.filter((item) => item.id !== id)
-    setAutomations(updated)
-    saveAutomations(updated)
+  const addAutomation = async (item) => {
+    await createAutomation(item)
+    await refreshAutomations()
   }
 
-  const resetData = () => {
-    setAutomations(seedData)
-    saveAutomations(seedData)
+  const deleteAutomation = async (id) => {
+    await removeAutomation(id)
+    await refreshAutomations()
+  }
+
+  const editAutomation = async (id, item) => {
+    await updateAutomation(id, item)
+    await refreshAutomations()
   }
 
   return (
-    <div className="app-shell">
-      <Sidebar onReset={resetData} />
-      <main className="main-content">
+    <div className="layout">
+      <Header />
+      <main className="layout__content">
+        {loading ? <p className="muted">Carregando...</p> : null}
+        {error ? <p className="muted">{error}</p> : null}
         <Routes>
           <Route path="/" element={<DashboardView automations={automations} />} />
-          <Route path="/admin" element={<AdminView automations={automations} onDelete={deleteAutomation} />} />
+          <Route
+            path="/admin"
+            element={<AdminView automations={automations} onDelete={deleteAutomation} onEdit={setEditing} />}
+          />
           <Route path="/admin/add" element={<AddAutomationForm onSave={addAutomation} />} />
         </Routes>
       </main>
+      <EditAutomationModal
+        automation={editing}
+        onClose={() => setEditing(null)}
+        onSave={editAutomation}
+      />
     </div>
   )
 }
