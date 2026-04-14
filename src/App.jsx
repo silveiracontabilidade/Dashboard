@@ -26,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import logoImg from './assets/logo.png'
 
 const departments = ['TI', 'Financeiro', 'RH', 'Comercial', 'Fiscal', 'Contábil', 'Marketing', 'Pessoal', 'Empresarial', 'Processos', 'CSI']
@@ -81,7 +81,9 @@ function formatPercent(value) {
 }
 
 function monthLabel(dateStr) {
-  const date = new Date(dateStr)
+  const [year, month] = String(dateStr).split('-')
+  if (!year || !month) return dateStr
+  const date = new Date(Number(year), Number(month) - 1, 1)
   return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '')
 }
 
@@ -146,14 +148,15 @@ function EvolutionChart({ automations }) {
     const monthMap = {}
     automations.forEach((item) => {
       if (!item.implementation_date) return
-      const date = new Date(item.implementation_date)
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const [year, month] = String(item.implementation_date).split('-')
+      if (!year || !month) return
+      const key = `${year}-${month.padStart(2, '0')}`
       monthMap[key] = (monthMap[key] || 0) + 1
     })
 
     return Object.entries(monthMap)
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([key, count]) => ({ month: monthLabel(`${key}-01`), total: count }))
+      .map(([key, count]) => ({ month: monthLabel(key), total: count }))
   }, [automations])
 
   return (
@@ -653,6 +656,9 @@ function AdminView({ automations, onDelete, onEdit }) {
 }
 
 function Header() {
+  const location = useLocation()
+  const showAdminButton = location.pathname === '/admin'
+
   return (
     <header className="header">
       <div className="header__inner">
@@ -669,10 +675,12 @@ function Header() {
             <LayoutDashboard size={16} />
             Público
           </NavLink>
-          <NavLink to="/admin" className={({ isActive }) => (isActive ? 'active' : '')}>
-            <Settings size={16} />
-            Área Administrativa
-          </NavLink>
+          {showAdminButton ? (
+            <NavLink to="/admin" className={({ isActive }) => (isActive ? 'active' : '')}>
+              <Settings size={16} />
+              Área Administrativa
+            </NavLink>
+          ) : null}
         </nav>
 
         <div className="header__actions">
